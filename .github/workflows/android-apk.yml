@@ -12,6 +12,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,28 +23,34 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Extract project
+      - name: Find SDK manager
         run: |
-          unzip -q GPT_Menu_GitHub_Actions_OnePlus_Ace_5.zip
-          cd GPT_Menu_CPP
-          echo "PROJECT_DIR=$PWD" >> $GITHUB_ENV
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
 
-      - name: Install Android SDK
+      - name: Install Android components
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
+      - name: Extract project
+        run: |
+          unzip -q GPT_Menu_GitHub_Actions_OnePlus_Ace_5.zip -d extracted
+          test -f extracted/GPT_Menu_CPP/app/build.gradle.kts
+
       - name: Build APK
-        run: cd "$PROJECT_DIR" && gradle --no-daemon assembleDebug
+        run: |
+          cd extracted/GPT_Menu_CPP
+          gradle --no-daemon assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: GPT-Menu-APK
-          path: GPT_Menu_CPP/app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/GPT_Menu_CPP/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           
