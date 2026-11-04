@@ -44,9 +44,14 @@ jobs:
           test -f extracted/GPT_Menu_CPP/app/build.gradle.kts
 
       - name: Build APK
-        run: |
-          cd extracted/GPT_Menu_CPP
-          gradle --no-daemon assembleDebug
+  run: |
+    cd extracted/GPT_Menu_CPP
+    printf '%s\n' \
+      'kotlin.compiler.execution.strategy=in-process' \
+      'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8' \
+      'org.gradle.workers.max=2' \
+      > gradle.properties
+    gradle --no-daemon --stacktrace --info assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
